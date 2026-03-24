@@ -1,0 +1,39 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: harbor
+  namespace: openshift-gitops
+spec:
+  project: default
+  sources:
+    - repoURL: https://helm.goharbor.io
+      chart: harbor
+      targetRevision: 1.18.2
+      helm:
+        releaseName: harbor
+        valueFiles:
+          - $values/clusters/overwatch/apps/harbor/values.yaml
+    - repoURL: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/overwatch-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/overwatch-gitops.git
+      targetRevision: main
+      path: apps/harbor
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: harbor
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[]?.remoteRef
+        - .spec.target
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

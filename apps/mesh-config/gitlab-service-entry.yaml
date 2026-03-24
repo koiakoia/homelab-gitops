@@ -1,0 +1,18 @@
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: gitlab-external
+  namespace: openshift-gitops
+spec:
+  hosts:
+  - gitlab.internal
+  addresses:
+  - ${GITLAB_IP}
+  ports:
+  - number: 80
+    name: http
+    protocol: HTTP
+  location: MESH_EXTERNAL
+  resolution: STATIC
+  endpoints:
+  - address: ${GITLAB_IP}

@@ -1,0 +1,53 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: keycloak
+  description: Identity provider and SSO with OIDC for all platform services
+  annotations:
+    backstage.io/techdocs-ref: "url:http://${GITLAB_IP}/${GITLAB_NAMESPACE}/overwatch-gitops/-/tree/main/techdocs/keycloak"
+    backstage.io/kubernetes-label-selector: app=keycloak
+    backstage.io/kubernetes-namespace: keycloak
+    argocd/app-name: keycloak
+    gitlab.com/project-slug: ${GITLAB_NAMESPACE}/overwatch-gitops
+  links:
+    - url: https://auth.${INTERNAL_DOMAIN}
+      title: Keycloak Admin Console
+      icon: dashboard
+    - url: https://auth.${DOMAIN}
+      title: Keycloak External
+      icon: web
+  tags:
+    - identity
+    - sso
+    - oidc
+    - security
+    - overwatch
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  dependsOn:
+    - component:keycloak-postgresql
+  providesApis:
+    - keycloak-oidc-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: keycloak-postgresql
+  description: PostgreSQL database backend for Keycloak identity provider
+  annotations:
+    backstage.io/kubernetes-label-selector: app=postgresql
+    backstage.io/kubernetes-namespace: keycloak
+    argocd/app-name: keycloak
+  tags:
+    - database
+    - postgresql
+    - overwatch
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform

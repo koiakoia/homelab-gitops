@@ -1,0 +1,152 @@
+planeVersion: stable
+
+dockerRegistry:
+  enabled: false
+
+ingress:
+  enabled: false
+  appHost: "plane.${INTERNAL_DOMAIN}"
+
+ssl:
+  generateCerts: false
+
+# --- Infrastructure: External PostgreSQL (raw manifests in apps/plane/) ---
+postgres:
+  local_setup: false
+
+# --- Infrastructure: Valkey (chart-managed) ---
+redis:
+  local_setup: true
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/valkey:7.2.5-alpine
+  servicePort: 6379
+  storageClass: nfs-storage
+  volumeSize: 2Gi
+  pullPolicy: IfNotPresent
+
+# --- Infrastructure: RabbitMQ (chart-managed) ---
+rabbitmq:
+  local_setup: true
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/rabbitmq:3.13.6-management-alpine
+  pullPolicy: IfNotPresent
+  servicePort: 5672
+  managementPort: 15672
+  storageClass: nfs-storage
+  volumeSize: 1Gi
+  default_user: plane
+  default_password: plane
+
+# --- Infrastructure: MinIO (chart-managed, in-cluster) ---
+minio:
+  local_setup: true
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/minio:latest
+  image_mc: harbor.${INTERNAL_DOMAIN}/sentinel/mc:latest
+  pullPolicy: IfNotPresent
+  root_user: plane-admin
+  root_password: placeholder-rotated-via-vault
+  storageClass: nfs-storage
+  volumeSize: 10Gi
+  env:
+    minio_endpoint_ssl: false
+
+# --- Application Services ---
+web:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 128Mi
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/plane-frontend
+  pullPolicy: IfNotPresent
+
+space:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 128Mi
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/plane-space
+  pullPolicy: IfNotPresent
+
+admin:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 128Mi
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/plane-admin
+  pullPolicy: IfNotPresent
+
+live:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 128Mi
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/plane-live
+  pullPolicy: IfNotPresent
+
+api:
+  replicas: 2
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 256Mi
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/plane-backend
+  pullPolicy: IfNotPresent
+
+worker:
+  replicas: 1
+  memoryLimit: 2000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 512Mi
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/plane-backend
+  pullPolicy: IfNotPresent
+
+beatworker:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 128Mi
+  image: harbor.${INTERNAL_DOMAIN}/sentinel/plane-backend
+  pullPolicy: IfNotPresent
+
+# --- Secrets: ExternalSecrets provide these K8s Secrets ---
+external_secrets:
+  app_env_existingSecret: plane-app-env
+  rabbitmq_existingSecret: plane-rabbitmq-creds
+  pgdb_existingSecret: ''
+  doc_store_existingSecret: ''
+  live_env_existingSecret: ''
+
+# --- Environment (non-secret values) ---
+env:
+  pgdb_remote_url: ""
+  pgdb_username: plane
+  pgdb_password: placeholder
+  pgdb_name: plane
+
+  remote_redis_url: ""
+
+  docstore_bucket: "uploads"
+  doc_upload_size_limit: "5242880"
+
+  aws_access_key: ""
+  aws_secret_access_key: ""
+  aws_region: ""
+  aws_s3_endpoint_url: ""
+
+  secret_key: "placeholder-managed-by-external-secret"
+
+  sentry_dsn: ""
+  sentry_environment: ""
+
+  cors_allowed_origins: "https://plane.${INTERNAL_DOMAIN}"
+  default_cluster_domain: cluster.local
+
+  live_sentry_dsn: ""
+  live_sentry_environment: ""
+  live_sentry_traces_sample_rate: ""
+
+  api_key_rate_limit: "60/minute"

@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nist-compliance-check
+  namespace: sentinel-ops
+spec:
+  schedule: "0 6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          serviceAccountName: sentinel-ops-sa
+          restartPolicy: Never
+          containers:
+            - name: compliance-check
+              image: harbor.${INTERNAL_DOMAIN}/sentinel/sentinel-ops:v1
+              command: ["/bin/bash", "/opt/sentinel-ops/nist-compliance-check.sh"]
+              envFrom:
+                - secretRef:
+                    name: ops-wazuh-creds
+                - secretRef:
+                    name: ops-minio-creds
+                - secretRef:
+                    name: ops-gitlab-token
+                - secretRef:
+                    name: ops-proxmox-creds
+              volumeMounts:
+                - name: scripts
+                  mountPath: /opt/sentinel-ops
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+          volumes:
+            - name: scripts
+              configMap:
+                name: compliance-scripts
+                defaultMode: 0755

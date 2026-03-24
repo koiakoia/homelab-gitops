@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-services
+  namespace: homepage
+data:
+  services.yaml: |
+    - Infrastructure:
+        - Proxmox - pve:
+            href: https://pve.${INTERNAL_DOMAIN}
+            description: Primary Proxmox node (32 CPU, 62GB RAM)
+            icon: proxmox
+        - Proxmox - pve2:
+            href: https://pve2.${INTERNAL_DOMAIN}
+            description: Second Proxmox node (36 CPU, 125GB RAM)
+            icon: proxmox
+        - Proxmox - proxmox-node-3:
+            href: https://proxmox-node-3.${INTERNAL_DOMAIN}
+            description: Third Proxmox node (32 CPU, 125GB RAM)
+            icon: proxmox
+        - Config Server (HA):
+            description: HAProxy, dnsmasq, nginx, keepalived (HA backup)
+            icon: mdi-server-security
+        - NetBox:
+            href: https://netbox.${INTERNAL_DOMAIN}
+            description: IPAM and DCIM (network/datacenter management)
+            icon: mdi-network
+    - Platform:
+        - OKD Console:
+            href: https://console.${INTERNAL_DOMAIN}
+            description: OpenShift/OKD cluster console
+            icon: openshift
+        - ArgoCD:
+            href: https://argocd.${INTERNAL_DOMAIN}
+            description: GitOps continuous delivery
+            icon: argocd
+        - Grafana:
+            href: https://grafana.${INTERNAL_DOMAIN}
+            description: Monitoring dashboards
+            icon: grafana
+        - Keycloak:
+            href: https://auth.${INTERNAL_DOMAIN}
+            description: Identity provider (SSO)
+            icon: mdi-shield-key
+        - Keycloak (External):
+            href: https://auth.${DOMAIN}
+            description: SSO — external access via Cloudflare
+            icon: mdi-shield-key-outline
+        - Kiali:
+            href: https://kiali.${INTERNAL_DOMAIN}
+            description: Istio service mesh console
+            icon: mdi-chart-timeline-variant
+        - Jaeger:
+            href: https://jaeger.${INTERNAL_DOMAIN}
+            description: Distributed tracing
+            icon: jaeger
+    - DevOps:
+        - GitLab:
+            href: https://gitlab.${DOMAIN}
+            description: Source control and CI/CD
+            icon: gitlab
+        - Vault:
+            href: https://vault.${INTERNAL_DOMAIN}
+            description: Secrets management and JiT SSH
+            icon: vault
+        - MinIO:
+            href: https://minio.${INTERNAL_DOMAIN}
+            description: Object storage (S3-compatible)
+            icon: minio
+        - Harbor:
+            href: https://harbor.${INTERNAL_DOMAIN}
+            description: Container registry
+            icon: harbor
+        - Backstage:
+            href: https://backstage.${INTERNAL_DOMAIN}
+            description: Developer portal
+            icon: backstage
+    - Security:
+        - Overwatch Console:
+            href: https://console-sec.${INTERNAL_DOMAIN}
+            description: Security operations dashboard (SOC)
+            icon: mdi-monitor-dashboard
+        - Wazuh:
+            href: https://wazuh.${INTERNAL_DOMAIN}
+            description: SIEM — threat detection and compliance
+            icon: wazuh
+        - DefectDojo:
+            href: https://defectdojo.${INTERNAL_DOMAIN}
+            description: Vulnerability management
+            icon: mdi-shield-bug
+    - Media:
+        - Jellyfin:
+            href: https://jellyfin.${INTERNAL_DOMAIN}
+            description: Media server
+            icon: jellyfin
+        - qBittorrent:
+            href: https://seedbox.${INTERNAL_DOMAIN}
+            description: Torrent client (via gluetun VPN)
+            icon: qbittorrent
+        - Sonarr:
+            href: https://sonarr.${INTERNAL_DOMAIN}
+            description: TV series management
+            icon: sonarr
+        - Radarr:
+            href: https://radarr.${INTERNAL_DOMAIN}
+            description: Movie management
+            icon: radarr
+        - Prowlarr:
+            href: https://prowlarr.${INTERNAL_DOMAIN}
+            description: Indexer manager
+            icon: prowlarr

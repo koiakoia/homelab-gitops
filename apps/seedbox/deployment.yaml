@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seedbox
+  namespace: media
+  labels:
+    app: seedbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seedbox
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: seedbox
+        app.kubernetes.io/name: seedbox
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      serviceAccountName: seedbox-sa
+      securityContext: {}
+      # IMPORTANT: LinuxServer.io s6-overlay needs SETGID/SETUID/CHOWN/FOWNER/DAC_OVERRIDE.
+      # DO NOT add "drop: ALL" or "allowPrivilegeEscalation: false" — it breaks s6 init.
+      # Uses custom "linuxserver-io" SCC. See .trivyignore for risk acceptance.
+      containers:
+      - name: sonarr
+        image: harbor.${INTERNAL_DOMAIN}/sentinel/sonarr:4.0.16
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PUID
+          value: '1000'
+        - name: PGID
+          value: '1000'
+        securityContext:
+          capabilities:
+            add:
+            - SETGID
+            - SETUID
+            - CHOWN
+            - FOWNER
+            - DAC_OVERRIDE
+            drop:
+            - MKNOD
+        ports:
+        - containerPort: 8989
+        volumeMounts:
+        - name: config-sonarr
+          mountPath: /config
+        - name: media
+          mountPath: /data
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 1Gi
+      - name: radarr
+        image: harbor.${INTERNAL_DOMAIN}/sentinel/radarr:5.23.3
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PUID
+          value: '1000'
+        - name: PGID
+          value: '1000'
+        securityContext:
+          capabilities:
+            add:
+            - SETGID
+            - SETUID
+            - CHOWN
+            - FOWNER
+            - DAC_OVERRIDE
+            drop:
+            - MKNOD
+        ports:
+        - containerPort: 7878
+        volumeMounts:
+        - name: config-radarr
+          mountPath: /config
+        - name: media
+          mountPath: /data
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 1Gi
+      - name: prowlarr
+        image: harbor.${INTERNAL_DOMAIN}/sentinel/prowlarr:1.32.2
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PUID
+          value: '1000'
+        - name: PGID
+          value: '1000'
+        securityContext:
+          capabilities:
+            add:
+            - SETGID
+            - SETUID
+            - CHOWN
+            - FOWNER
+            - DAC_OVERRIDE
+            drop:
+            - MKNOD
+        ports:
+        - containerPort: 9696
+        volumeMounts:
+        - name: config-prowlarr
+          mountPath: /config
+        - name: media
+          mountPath: /data
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+      volumes:
+      - name: media
+        persistentVolumeClaim:
+          claimName: seedbox-media
+      - name: config-sonarr
+        persistentVolumeClaim:
+          claimName: sonarr-config
+      - name: config-radarr
+        persistentVolumeClaim:
+          claimName: radarr-config
+      - name: config-prowlarr
+        persistentVolumeClaim:
+          claimName: prowlarr-config

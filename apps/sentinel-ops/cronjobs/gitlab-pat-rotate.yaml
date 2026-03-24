@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gitlab-pat-rotate
+  namespace: sentinel-ops
+spec:
+  schedule: "0 4 * * 1"  # Weekly Monday 4AM UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          serviceAccountName: sentinel-ops-sa
+          restartPolicy: Never
+          containers:
+            - name: rotate
+              image: harbor.${INTERNAL_DOMAIN}/sentinel/sentinel-ops:v1
+              command: ["/bin/bash", "/opt/sentinel-ops/gitlab-pat-rotate.sh"]
+              envFrom:
+                - secretRef:
+                    name: ops-gitlab-token
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              volumeMounts:
+                - name: scripts
+                  mountPath: /opt/sentinel-ops
+          volumes:
+            - name: scripts
+              configMap:
+                name: ops-scripts
+                defaultMode: 0755

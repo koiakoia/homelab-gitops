@@ -1,0 +1,35 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: seedbox-okd
+  description: OKD-hosted media automation stack (Sonarr, Radarr, Prowlarr) with Istio mesh
+  annotations:
+    backstage.io/kubernetes-label-selector: app=seedbox
+    backstage.io/kubernetes-namespace: media
+    argocd/app-name: seedbox
+    gitlab.com/project-slug: ${GITLAB_NAMESPACE}/overwatch-gitops
+  links:
+    - url: https://sonarr.${INTERNAL_DOMAIN}
+      title: Sonarr
+      icon: dashboard
+    - url: https://radarr.${INTERNAL_DOMAIN}
+      title: Radarr
+      icon: dashboard
+    - url: https://prowlarr.${INTERNAL_DOMAIN}
+      title: Prowlarr
+      icon: dashboard
+  tags:
+    - media
+    - automation
+    - application
+    - overwatch
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  dependsOn:
+    - component:nfs-provisioner
+    - component:istio-controlplane
+    - resource:seedbox-vm

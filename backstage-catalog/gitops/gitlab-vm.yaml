@@ -1,0 +1,28 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: gitlab-server
+  description: GitLab CI/CD server hosting all project repositories and pipelines
+  links:
+    - url: https://gitlab.${DOMAIN}
+      title: GitLab (External)
+      icon: dashboard
+    - url: https://gitlab.${INTERNAL_DOMAIN}
+      title: GitLab (Internal)
+      icon: web
+  tags:
+    - gitops
+    - ci-cd
+    - source-control
+    - vm-service
+    - overwatch
+spec:
+  type: vm
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  dependsOn:
+    - resource:proxmox-pve
+  providesApis:
+    - gitlab-rest-api

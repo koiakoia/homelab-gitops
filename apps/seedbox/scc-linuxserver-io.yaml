@@ -1,0 +1,52 @@
+# Custom SCC for LinuxServer.io containers (sonarr, radarr, prowlarr)
+# Like anyuid but adds capabilities needed by s6-overlay init system.
+# Must use 'users' field directly — OKD SCC admission ignores RBAC RoleBindings.
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: linuxserver-io
+  annotations:
+    kubernetes.io/description: >-
+      Like anyuid but adds SETGID, SETUID, CHOWN, FOWNER, DAC_OVERRIDE
+      capabilities needed by LinuxServer.io s6-overlay containers.
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: false
+allowedCapabilities:
+  - SETGID
+  - SETUID
+  - CHOWN
+  - FOWNER
+  - DAC_OVERRIDE
+defaultAddCapabilities: null
+requiredDropCapabilities:
+  - MKNOD
+fsGroup:
+  type: RunAsAny
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+seccompProfiles:
+  - runtime/default
+  - unconfined
+readOnlyRootFilesystem: false
+priority: null
+users:
+  - system:serviceaccount:media:seedbox-sa
+groups: []
+volumes:
+  - configMap
+  - csi
+  - downwardAPI
+  - emptyDir
+  - ephemeral
+  - persistentVolumeClaim
+  - projected
+  - secret

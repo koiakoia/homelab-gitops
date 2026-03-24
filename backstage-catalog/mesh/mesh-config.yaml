@@ -1,0 +1,22 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: mesh-config
+  description: Istio mesh configuration - VirtualServices, DestinationRules, PeerAuthentication, and authorization policies
+  annotations:
+    backstage.io/kubernetes-namespace: istio-system
+    argocd/app-name: mesh-config
+    gitlab.com/project-slug: ${GITLAB_NAMESPACE}/overwatch-gitops
+  tags:
+    - service-mesh
+    - istio
+    - configuration
+    - overwatch
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  dependsOn:
+    - component:istio-controlplane

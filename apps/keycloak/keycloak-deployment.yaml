@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: keycloak
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+        app.kubernetes.io/name: keycloak
+    spec:
+      imagePullSecrets:
+        - name: harbor-pull-secret
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: keycloak
+          image: harbor.${INTERNAL_DOMAIN}/sentinel/keycloak:26.1.4
+          imagePullPolicy: IfNotPresent
+          args:
+            - start
+            - --optimized=false
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9000
+              name: management
+          env:
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: jdbc:postgresql://postgresql:5432/keycloak
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: POSTGRES_USER
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-credentials
+                  key: POSTGRES_PASSWORD
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin-credentials
+                  key: KEYCLOAK_ADMIN
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin-credentials
+                  key: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_SPI_USER_CACHE_DEFAULT_ENABLED
+              value: "false"
+            - name: KC_SPI_EVENTS_LISTENER_JBOSS_LOGGING_SUCCESS_LEVEL
+              value: info
+            - name: KC_SPI_EVENTS_STORE_PROVIDER
+              value: jpa
+            - name: KC_SPI_EVENTS_STORE_JPA_MAX_DETAIL_LENGTH
+              value: "1000"
+          volumeMounts:
+            - name: sentinel-theme-properties
+              mountPath: /opt/keycloak/themes/sentinel/login/theme.properties
+              subPath: theme.properties
+            - name: sentinel-theme-css
+              mountPath: /opt/keycloak/themes/sentinel/login/resources/css/sentinel.css
+              subPath: sentinel.css
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "2"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 9000
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            failureThreshold: 15
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 9000
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 10
+      volumes:
+        - name: sentinel-theme-properties
+          configMap:
+            name: keycloak-sentinel-theme
+            items:
+              - key: theme.properties
+                path: theme.properties
+        - name: sentinel-theme-css
+          configMap:
+            name: keycloak-sentinel-theme
+            items:
+              - key: sentinel.css
+                path: sentinel.css

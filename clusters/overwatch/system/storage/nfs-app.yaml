@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nfs-provisioner
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    chart: nfs-subdir-external-provisioner
+    repoURL: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+    targetRevision: 4.0.18
+    helm:
+      parameters:
+      - name: nfs.server
+        value: ${VAULT_SECONDARY_IP}
+      - name: nfs.path
+        value: /mnt/DATA/data
+      - name: storageClass.create
+        value: "false"
+      - name: rbac.create
+        value: "false"
+      valuesObject:
+        podAnnotations:
+          sidecar.istio.io/inject: "false"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nfs-provisioner
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

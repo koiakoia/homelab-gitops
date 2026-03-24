@@ -1,0 +1,62 @@
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify Image Signatures
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Verify cosign signatures on container images from the Harbor registry.
+      Images from harbor.${INTERNAL_DOMAIN} must be signed with the project cosign key.
+      Maps to NIST 800-53 controls SI-7, CM-14, SA-12.
+      Harbor namespace excluded to avoid circular dependency (Harbor can't verify
+      its own images against itself during recovery).
+spec:
+  validationFailureAction: Enforce
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-harbor-image-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - backstage
+                - defectdojo
+                - demo
+                - haists-website
+                - homepage
+                - keycloak
+                - matrix
+                - media
+                - monitoring
+                - netbox
+                - nfs-provisioner
+                - overwatch-console
+                - pangolin-internal
+                - sentinel-ops
+      verifyImages:
+        - imageReferences:
+            - "harbor.${INTERNAL_DOMAIN}/*"
+          attestors:
+            - entries:
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEeoZ6uG2ZJhmfixK+kqpiKQlWwJIb
+                      n/B7orsb2bAk8l/mlmsd1jebbdtNLoG1F6qgbvqOXLDwwSqlS/qXR5kUrg==
+                      -----END PUBLIC KEY-----
+                    rekor:
+                      ignoreTlog: true
+                    ctlog:
+                      ignoreSCT: true
+          required: true
+          mutateDigest: false
+          verifyDigest: false
+          imageRegistryCredentials:
+            secrets:
+              - harbor-pull-secret

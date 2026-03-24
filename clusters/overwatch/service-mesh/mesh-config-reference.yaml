@@ -1,0 +1,37 @@
+# Mesh config resources span multiple namespaces (istio-ingress, kyverno,
+# demo, homepage, media, monitoring, openshift-gitops, backstage, defectdojo,
+# harbor, netbox) and include cluster-scoped ClusterRoleBinding. Cannot be
+# managed by namespace-scoped ArgoCD.
+# Manifests in apps/mesh-config/ are applied via: oc apply -Rf apps/mesh-config/
+#
+# ArgoCD Application below is kept as reference but NOT applied:
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mesh-config-reference
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    sentinel.${DOMAIN}/managed-by: oc-apply
+    sentinel.${DOMAIN}/note: >-
+      Reference only. Resources span unmanaged namespaces and include
+      cluster-scoped CRBs incompatible with namespace-scoped ArgoCD.
+spec:
+  project: default
+  source:
+    repoURL: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/overwatch-gitops.git
+    targetRevision: main
+    path: apps/mesh-config
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

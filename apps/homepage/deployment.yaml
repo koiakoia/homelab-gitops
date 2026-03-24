@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: homepage
+  labels:
+    app: homepage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homepage
+  template:
+    metadata:
+      labels:
+        app: homepage
+        app.kubernetes.io/name: homepage
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: init-config
+          image: harbor.${INTERNAL_DOMAIN}/sentinel/busybox:1.37.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              cp /configmaps/settings/settings.yaml /app/config/settings.yaml
+              cp /configmaps/services/services.yaml /app/config/services.yaml
+              cp /configmaps/widgets/widgets.yaml /app/config/widgets.yaml
+              cp /configmaps/bookmarks/bookmarks.yaml /app/config/bookmarks.yaml
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+            - name: config-settings
+              mountPath: /configmaps/settings
+            - name: config-services
+              mountPath: /configmaps/services
+            - name: config-widgets
+              mountPath: /configmaps/widgets
+            - name: config-bookmarks
+              mountPath: /configmaps/bookmarks
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+      containers:
+        - name: homepage
+          image: harbor.${INTERNAL_DOMAIN}/sentinel/homepage:v1.2.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: home.${INTERNAL_DOMAIN}
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: config-settings
+          configMap:
+            name: homepage-settings
+        - name: config-services
+          configMap:
+            name: homepage-services
+        - name: config-widgets
+          configMap:
+            name: homepage-widgets
+        - name: config-bookmarks
+          configMap:
+            name: homepage-bookmarks

@@ -1,0 +1,41 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: keycloak-oidc-api
+  description: Keycloak OIDC provider for the sentinel realm (4 clients)
+  links:
+    - url: https://auth.${INTERNAL_DOMAIN}/realms/sentinel/.well-known/openid-configuration
+      title: OIDC Discovery Endpoint
+      icon: web
+  tags:
+    - identity
+    - oidc
+    - sso
+    - overwatch
+spec:
+  type: openapi
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: Keycloak OIDC API
+      version: "26.0"
+      description: |
+        Keycloak OIDC provider for sentinel realm.
+        Clients: grafana, argocd, okd-console, cloudflare-access.
+        Groups: admin, operator, viewer.
+    servers:
+      - url: https://auth.${INTERNAL_DOMAIN}/realms/sentinel
+    paths:
+      /.well-known/openid-configuration:
+        get:
+          summary: OIDC discovery endpoint
+      /protocol/openid-connect/token:
+        post:
+          summary: Token endpoint
+      /protocol/openid-connect/userinfo:
+        get:
+          summary: UserInfo endpoint

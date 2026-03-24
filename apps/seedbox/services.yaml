@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: seedbox
+  namespace: media
+spec:
+  selector:
+    app: seedbox
+  ports:
+    - name: sonarr
+      port: 8989
+      targetPort: 8989
+    - name: radarr
+      port: 7878
+      targetPort: 7878
+    - name: prowlarr
+      port: 9696
+      targetPort: 9696
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: sonarr
+  namespace: media
+spec:
+  to:
+    kind: Service
+    name: seedbox
+  port:
+    targetPort: 8989
+  tls:
+    termination: edge
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: sonarr-208
+  namespace: media
+spec:
+  host: sonarr.${INTERNAL_DOMAIN}
+  to:
+    kind: Service
+    name: seedbox
+  port:
+    targetPort: 8989
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: radarr
+  namespace: media
+spec:
+  to:
+    kind: Service
+    name: seedbox
+  port:
+    targetPort: 7878
+  tls:
+    termination: edge
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: radarr-208
+  namespace: media
+spec:
+  host: radarr.${INTERNAL_DOMAIN}
+  to:
+    kind: Service
+    name: seedbox
+  port:
+    targetPort: 7878
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: prowlarr
+  namespace: media
+spec:
+  to:
+    kind: Service
+    name: seedbox
+  port:
+    targetPort: 9696
+  tls:
+    termination: edge
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: prowlarr-208
+  namespace: media
+spec:
+  host: prowlarr.${INTERNAL_DOMAIN}
+  to:
+    kind: Service
+    name: seedbox
+  port:
+    targetPort: 9696
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: minio-replicate
+  namespace: sentinel-ops
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false"
+        spec:
+          serviceAccountName: sentinel-ops-sa
+          restartPolicy: Never
+          containers:
+            - name: replicate
+              image: harbor.${INTERNAL_DOMAIN}/sentinel/sentinel-ops:v1
+              command: ["/bin/bash", "/opt/sentinel-ops/minio-replicate.sh"]
+              envFrom:
+                - secretRef:
+                    name: ops-minio-creds
+              volumeMounts:
+                - name: scripts
+                  mountPath: /opt/sentinel-ops
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+          volumes:
+            - name: scripts
+              configMap:
+                name: ops-scripts
+                defaultMode: 0755

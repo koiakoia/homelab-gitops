@@ -1,0 +1,711 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-synapse
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /_matrix
+  to:
+    kind: Service
+    name: synapse
+  port:
+    targetPort: 8008
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-synapse-admin
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /_synapse
+  to:
+    kind: Service
+    name: synapse
+  port:
+    targetPort: 8008
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-wellknown
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /.well-known/matrix
+  to:
+    kind: Service
+    name: synapse
+  port:
+    targetPort: 8008
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-auth
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /auth
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-openid-config
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /.well-known/openid-configuration
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-oauth2
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /oauth2
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-upstream
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /upstream
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-assets
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /assets
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-graphql
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /graphql
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-authorize
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /authorize
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-login
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /login
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-register
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /register
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-reauth
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /reauth
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-consent
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /consent
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-logout
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /logout
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-recover
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /recover
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-verify-email
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /verify-email
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-link
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /link
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-device
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /device
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-account
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  path: /account
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-element
+  namespace: matrix
+spec:
+  host: matrix.${INTERNAL_DOMAIN}
+  to:
+    kind: Service
+    name: element-web
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-synapse-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /_matrix
+  to:
+    kind: Service
+    name: synapse
+  port:
+    targetPort: 8008
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-synapse-admin-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /_synapse
+  to:
+    kind: Service
+    name: synapse
+  port:
+    targetPort: 8008
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-wellknown-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /.well-known/matrix
+  to:
+    kind: Service
+    name: synapse
+  port:
+    targetPort: 8008
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-auth-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /auth
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-openid-config-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /.well-known/openid-configuration
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-oauth2-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /oauth2
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-upstream-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /upstream
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-assets-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /assets
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-graphql-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /graphql
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-authorize-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /authorize
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-login-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /login
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-register-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /register
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-reauth-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /reauth
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-consent-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /consent
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-logout-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /logout
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-recover-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /recover
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-verify-email-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /verify-email
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-link-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /link
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-device-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /device
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-mas-account-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  path: /account
+  to:
+    kind: Service
+    name: mas
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: matrix-element-external
+  namespace: matrix
+spec:
+  host: matrix.${DOMAIN}
+  to:
+    kind: Service
+    name: element-web
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

@@ -1,0 +1,25 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kyverno
+  description: Kubernetes policy engine for admission control and supply chain security
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/name=kyverno
+    backstage.io/kubernetes-namespace: kyverno
+    argocd/app-name: kyverno-policies
+    gitlab.com/project-slug: ${GITLAB_NAMESPACE}/overwatch-gitops
+  links:
+    - url: https://grafana.${INTERNAL_DOMAIN}/d/kyverno
+      title: Kyverno Metrics Dashboard
+      icon: dashboard
+  tags:
+    - policy
+    - security
+    - admission-control
+    - overwatch
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform

@@ -1,0 +1,22 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: unifi-exporter
+  description: UniFi network metrics collector and Prometheus exporter on iac-control
+  annotations:
+    gitlab.com/project-slug: ${GITLAB_NAMESPACE}/sentinel-unifi
+    grafana/dashboard-url: https://grafana.${INTERNAL_DOMAIN}
+  tags:
+    - monitoring
+    - networking
+    - prometheus
+    - vm-service
+    - overwatch
+spec:
+  type: vm
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  dependsOn:
+    - resource:iac-control

@@ -1,0 +1,38 @@
+---
+apiVersion: sailoperator.io/v1
+kind: Istio
+metadata:
+  name: default
+spec:
+  version: v1.28.3
+  namespace: istio-system
+  updateStrategy:
+    type: InPlace
+  values:
+    global:
+      istioNamespace: istio-system
+    pilot:
+      resources:
+        requests:
+          cpu: 200m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+      replicaCount: 1
+      autoscaleEnabled: false
+    meshConfig:
+      defaultConfig:
+        holdApplicationUntilProxyStarts: true
+        tracing:
+          zipkin:
+            address: "jaeger-collector.observability.svc.cluster.local:9411"
+          sampling: 100
+      accessLogFile: /dev/stdout
+      accessLogFormat: "[%START_TIME%] \"%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%\" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% \"%REQ(X-FORWARDED-FOR)%\" \"%REQ(USER-AGENT)%\" \"%REQ(X-REQUEST-ID)%\" \"%REQ(:AUTHORITY)%\" \"%UPSTREAM_HOST%\" %UPSTREAM_CLUSTER% %UPSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_REMOTE_ADDRESS% %REQUESTED_SERVER_NAME%\n"
+      enableAccessLog: true
+      enablePrometheusMerge: true
+      outboundTrafficPolicy:
+        mode: REGISTRY_ONLY
+    sidecarInjectorWebhook:
+      rewriteAppHTTPProbe: true

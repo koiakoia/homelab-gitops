@@ -1,0 +1,28 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kiali
+  description: Service mesh observability console for Istio traffic and topology
+  annotations:
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/name=kiali
+    backstage.io/kubernetes-namespace: istio-system
+    argocd/app-name: mesh-config
+    gitlab.com/project-slug: ${GITLAB_NAMESPACE}/overwatch-gitops
+  links:
+    - url: https://kiali.${INTERNAL_DOMAIN}
+      title: Kiali Console
+      icon: dashboard
+  tags:
+    - service-mesh
+    - monitoring
+    - observability
+    - overwatch
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  dependsOn:
+    - component:istio-controlplane
+    - component:jaeger

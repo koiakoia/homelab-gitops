@@ -1,0 +1,50 @@
+# Istio control plane is installed via Sail Operator (OLM) + direct oc apply
+# NOT managed by ArgoCD due to namespace-scoped ArgoCD limitation with
+# cluster-scoped CRDs (IstioCNI, Istio are Cluster-scoped).
+#
+# Installation steps:
+# 1. Sail Operator installed via OLM Subscription (openshift-operators namespace)
+# 2. Namespaces created: istio-system, istio-cni
+# 3. IstioCNI CR applied: apps/istio-controlplane/istio-cni.yaml
+# 4. Istio CR applied: apps/istio-controlplane/istio.yaml
+#
+# Upgrade: Update version in CRs, re-apply with oc apply -f
+#
+# ArgoCD Application below is kept as reference but NOT applied:
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-controlplane-reference
+  namespace: openshift-gitops
+  annotations:
+    sentinel.${DOMAIN}/managed-by: sail-operator
+    sentinel.${DOMAIN}/note: >-
+      Reference only. Istio CRs are cluster-scoped and cannot be managed
+      by namespace-scoped ArgoCD.
+spec:
+  project: default
+  source:
+    repoURL: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/overwatch-gitops.git
+    targetRevision: main
+    path: apps/istio-controlplane
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: sailoperator.io
+      kind: Istio
+      jsonPointers:
+        - /status
+    - group: sailoperator.io
+      kind: IstioCNI
+      jsonPointers:
+        - /status

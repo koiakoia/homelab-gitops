@@ -1,0 +1,17 @@
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: argocd
+  namespace: openshift-gitops
+spec:
+  hosts:
+    - argocd.${INTERNAL_DOMAIN}
+  gateways:
+    - istio-ingress/sentinel-gateway
+  http:
+    - route:
+        - destination:
+            host: openshift-gitops-server.openshift-gitops.svc.cluster.local
+            port:
+              number: 80

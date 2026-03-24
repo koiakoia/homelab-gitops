@@ -1,0 +1,142 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-app-config
+  namespace: backstage
+data:
+  app-config.yaml: |
+    app:
+      title: Sentinel Developer Portal
+      baseUrl: https://backstage.${INTERNAL_DOMAIN}
+
+    organization:
+      name: Project Sentinel
+
+    backend:
+      baseUrl: https://backstage.${INTERNAL_DOMAIN}
+      listen:
+        port: 7007
+        host: 0.0.0.0
+      reading:
+        allow:
+          - host: '${GITLAB_IP}'
+      csp:
+        connect-src: ["'self'", 'https://*.${INTERNAL_DOMAIN}', 'http://${GITLAB_IP}']
+      cors:
+        origin: https://backstage.${INTERNAL_DOMAIN}
+        methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+        credentials: true
+      database:
+        client: pg
+        connection:
+          host: ${POSTGRES_HOST}
+          port: ${POSTGRES_PORT}
+          user: ${POSTGRES_USER}
+          password: ${POSTGRES_PASSWORD}
+      auth:
+        keys:
+          - secret: ${BACKEND_SECRET}
+        externalAccess:
+          - type: static
+            options:
+              token: ${MCP_TOKEN}
+              subject: mcp-actions
+      session:
+        secret: ${SESSION_SECRET}
+
+    auth:
+      environment: production
+      providers:
+        guest:
+          dangerouslyAllowOutsideDevelopment: false
+        oidc:
+          production:
+            metadataUrl: https://auth.${INTERNAL_DOMAIN}/realms/sentinel/.well-known/openid-configuration
+            clientId: ${OIDC_CLIENT_ID}
+            clientSecret: ${OIDC_CLIENT_SECRET}
+            additionalScopes:
+              - profile
+              - email
+              - groups
+            prompt: auto
+            callbackUrl: https://backstage.${INTERNAL_DOMAIN}/api/auth/oidc/handler/frame
+            signIn:
+              resolvers:
+                - resolver: emailMatchingUserEntityProfileEmail
+      signIn:
+        resolvers:
+          - resolver: emailMatchingUserEntityProfileEmail
+
+    catalog:
+      import:
+        entityFilename: catalog-info.yaml
+        pullRequestBranchName: backstage-integration
+      rules:
+        - allow: [Component, System, API, Resource, Location, Group, User]
+      locations:
+        - type: url
+          target: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/sentinel-iac/blob/main/catalog-info.yaml
+          rules:
+            - allow: [Component, System, Location]
+        - type: url
+          target: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/overwatch-gitops/blob/main/catalog-info.yaml
+          rules:
+            - allow: [Component, System, API, Resource, Location, Group, User]
+        - type: url
+          target: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/sentinel-unifi/blob/main/catalog-info.yaml
+          rules:
+            - allow: [Component, System, Location]
+
+    integrations:
+      gitlab:
+        - host: ${GITLAB_IP}
+          baseUrl: http://${GITLAB_IP}
+          apiBaseUrl: http://${GITLAB_IP}/api/v4
+          token: ${GITLAB_TOKEN}
+
+    techdocs:
+      builder: local
+      generator:
+        runIn: local
+      publisher:
+        type: local
+
+    proxy:
+      endpoints:
+        '/grafana/api':
+          target: https://grafana.${INTERNAL_DOMAIN}
+          headers:
+            Authorization: Bearer ${GRAFANA_TOKEN}
+
+    scaffolder: {}
+
+    kubernetes:
+      serviceLocatorMethod:
+        type: multiTenant
+      clusterLocatorMethods:
+        - type: config
+          clusters:
+            - name: overwatch
+              url: https://api.${OKD_CLUSTER}.${DOMAIN}:6443
+              authProvider: serviceAccount
+              skipTLSVerify: true
+
+    argocd:
+      baseUrl: https://argocd.${INTERNAL_DOMAIN}
+      appLocatorMethods:
+        - type: config
+          instances:
+            - name: overwatch
+              url: https://argocd.${INTERNAL_DOMAIN}
+              token: ${ARGOCD_AUTH_TOKEN}
+
+    grafana:
+      domain: https://grafana.${INTERNAL_DOMAIN}
+      unifiedAlerting: true
+
+    vault:
+      baseUrl: https://vault.${INTERNAL_DOMAIN}
+      token: ${VAULT_TOKEN}
+      secretEngine: secret
+      kvVersion: 2

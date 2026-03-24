@@ -1,0 +1,81 @@
+# Kiali is installed via Helm directly (not managed by ArgoCD)
+# due to OpenShift GitOps namespace-scoped limitation with ClusterRoles.
+#
+# Installation command:
+# helm install kiali kiali/kiali-server --version 2.22.0 --namespace istio-system \
+#   --set auth.strategy=anonymous \
+#   --set external_services.istio.root_namespace=istio-system \
+#   --set external_services.prometheus.url="https://thanos-querier.openshift-monitoring.svc.cluster.local:9091" \
+#   --set external_services.tracing.in_cluster_url="http://jaeger-query.observability.svc.cluster.local:16686" \
+#   --set external_services.grafana.in_cluster_url="http://grafana.monitoring.svc.cluster.local:80"
+#
+# OKD Route auto-created by Helm chart at:
+#   kiali-istio-system.apps.${OKD_CLUSTER}.${DOMAIN}
+#
+# ArgoCD Application below is kept as reference but NOT applied:
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kiali-reference
+  namespace: openshift-gitops
+  annotations:
+    sentinel.${DOMAIN}/managed-by: helm
+    sentinel.${DOMAIN}/note: >-
+      Reference only. Kiali is Helm-managed due to OKD ClusterRole constraints.
+spec:
+  project: default
+  source:
+    repoURL: https://kiali.org/helm-charts
+    chart: kiali-server
+    targetRevision: 2.22.0
+    helm:
+      releaseName: kiali
+      valuesObject:
+        deployment:
+          accessible_namespaces:
+            - "**"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          replicas: 1
+          view_only_mode: false
+        auth:
+          strategy: anonymous
+        external_services:
+          istio:
+            root_namespace: istio-system
+            component_status:
+              enabled: true
+            config_map_name: istio
+            istiod_deployment_name: istiod
+          prometheus:
+            url: "https://thanos-querier.openshift-monitoring.svc.cluster.local:9091"
+            auth:
+              type: bearer
+              use_kiali_token: true
+          tracing:
+            enabled: true
+            provider: jaeger
+            in_cluster_url: "http://jaeger-query.observability.svc.cluster.local:16686"
+            use_grpc: false
+          grafana:
+            enabled: true
+            in_cluster_url: "http://grafana.monitoring.svc.cluster.local:80"
+            url: "https://grafana.${INTERNAL_DOMAIN}"
+        server:
+          web_root: /kiali
+          web_schema: https
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

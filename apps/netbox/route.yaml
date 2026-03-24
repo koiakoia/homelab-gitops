@@ -1,0 +1,15 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: netbox
+  namespace: netbox
+spec:
+  host: netbox.${INTERNAL_DOMAIN}
+  to:
+    kind: Service
+    name: netbox
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

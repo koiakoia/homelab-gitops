@@ -1,0 +1,161 @@
+# Harbor Helm values for OKD deployment
+# Chart: harbor/harbor v1.18.2 (Harbor v2.14.2)
+# Storage: Filesystem on NFS PVCs (no MinIO)
+# Database: External raw PostgreSQL (NFS-compatible, no chart subchart)
+# TLS: Edge termination via OKD Route
+
+expose:
+  type: clusterIP
+  tls:
+    enabled: false
+  clusterIP:
+    name: harbor
+    ports:
+      httpPort: 80
+
+externalURL: https://harbor.${INTERNAL_DOMAIN}
+
+# Admin password from ExternalSecret
+existingSecretAdminPassword: harbor-credentials
+existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+
+# Secret key from ExternalSecret
+existingSecretSecretKey: harbor-credentials
+
+persistence:
+  enabled: true
+  resourcePolicy: "keep"
+  persistentVolumeClaim:
+    registry:
+      storageClass: nfs-storage
+      size: 100Gi
+    jobservice:
+      jobLog:
+        storageClass: nfs-storage
+        size: 1Gi
+    trivy:
+      storageClass: nfs-storage
+      size: 5Gi
+  imageChartStorage:
+    disableredirect: true
+    type: filesystem
+    filesystem:
+      rootdirectory: /storage
+
+# External PostgreSQL (raw deployment, NFS-compatible)
+database:
+  type: external
+  external:
+    host: harbor-database
+    port: "5432"
+    username: harbor
+    coreDatabase: registry
+    existingSecret: harbor-database
+    sslmode: "disable"
+
+# Internal Redis (chart subchart — works with kyverno-anyuid SCC)
+redis:
+  type: internal
+  internal:
+    serviceAccountName: harbor-redis
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# Nginx reverse proxy (required for clusterIP expose type)
+nginx:
+  serviceAccountName: harbor
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+core:
+  serviceAccountName: harbor
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+portal:
+  serviceAccountName: harbor
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+registry:
+  serviceAccountName: harbor
+  relativeurls: true
+  registry:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+  controller:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+jobservice:
+  serviceAccountName: harbor
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+trivy:
+  enabled: true
+  serviceAccountName: harbor
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+exporter:
+  serviceAccountName: harbor
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+metrics:
+  enabled: true
+  core:
+    path: /metrics
+    port: 8001
+  registry:
+    path: /metrics
+    port: 8001
+  exporter:
+    path: /metrics
+    port: 8001

@@ -1,0 +1,56 @@
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registries
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Container images must come from approved registries only.
+      Maps to NIST 800-53 controls CM-7, SI-7.
+spec:
+  background: true
+  validationFailureAction: Enforce
+  rules:
+    - name: restrict-registries
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - backstage
+                - defectdojo
+                - demo
+                - harbor
+                - haists-website
+                - homepage
+                - keycloak
+                - matrix
+                - media
+                - monitoring
+                - netbox
+                - nfs-provisioner
+                - overwatch-console
+                - pangolin-internal
+                - sentinel-ops
+      validate:
+        message: >-
+          Images must come from an approved registry. Allowed: docker.io,
+          gcr.io, ghcr.io, lscr.io, quay.io, registry.k8s.io, harbor.${INTERNAL_DOMAIN}.
+        deny:
+          conditions:
+            all:
+              - key: '{{ images.[containers, initContainers].*.registry }}'
+                operator: AnyNotIn
+                value:
+                  - docker.io
+                  - gcr.io
+                  - ghcr.io
+                  - lscr.io
+                  - quay.io
+                  - registry.k8s.io
+                  - index.docker.io
+                  - harbor.${INTERNAL_DOMAIN}

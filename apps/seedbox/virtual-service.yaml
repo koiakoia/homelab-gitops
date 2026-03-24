@@ -1,0 +1,54 @@
+---
+# Sonarr - TV show management
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: sonarr
+  namespace: media
+spec:
+  hosts:
+    - sonarr.${INTERNAL_DOMAIN}
+  gateways:
+    - istio-ingress/sentinel-gateway
+  http:
+    - route:
+        - destination:
+            host: seedbox.media.svc.cluster.local
+            port:
+              number: 8989
+---
+# Radarr - Movie management
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: radarr
+  namespace: media
+spec:
+  hosts:
+    - radarr.${INTERNAL_DOMAIN}
+  gateways:
+    - istio-ingress/sentinel-gateway
+  http:
+    - route:
+        - destination:
+            host: seedbox.media.svc.cluster.local
+            port:
+              number: 7878
+---
+# Prowlarr - Indexer management
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: prowlarr
+  namespace: media
+spec:
+  hosts:
+    - prowlarr.${INTERNAL_DOMAIN}
+  gateways:
+    - istio-ingress/sentinel-gateway
+  http:
+    - route:
+        - destination:
+            host: seedbox.media.svc.cluster.local
+            port:
+              number: 9696

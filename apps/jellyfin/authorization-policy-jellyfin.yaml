@@ -1,0 +1,24 @@
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-jellyfin
+  namespace: media
+spec:
+  selector:
+    matchLabels:
+      app: jellyfin
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces:
+              - openshift-ingress
+      to:
+        - operation:
+            ports:
+              - "8096"
+    - from:
+        - source:
+            namespaces:
+              - media

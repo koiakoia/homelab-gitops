@@ -1,0 +1,260 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-sentinel-theme
+  namespace: keycloak
+data:
+  theme.properties: |
+    parent=keycloak
+    import=common/keycloak
+    styles=css/sentinel.css
+  sentinel.css: |
+    /* Project Sentinel - Custom Login Theme */
+
+    /* ===== ANIMATED BACKGROUND ===== */
+    .login-pf body,
+    body.kc-login {
+      background: #0a0e17 !important;
+      overflow: hidden;
+    }
+
+    .login-pf body::before,
+    body.kc-login::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -2;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+        linear-gradient(180deg, #0a0e17 0%, #111827 50%, #0a0e17 100%);
+    }
+
+    /* Animated grid */
+    .login-pf body::after,
+    body.kc-login::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+      background-image:
+        linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      animation: gridShift 20s linear infinite;
+    }
+
+    @keyframes gridShift {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(60px, 60px); }
+    }
+
+    /* ===== FLOATING PARTICLES (pure CSS) ===== */
+    #kc-header-wrapper::before {
+      content: '';
+      position: fixed;
+      width: 300px; height: 300px;
+      top: 10%; left: 5%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+      animation: float1 15s ease-in-out infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    #kc-header-wrapper::after {
+      content: '';
+      position: fixed;
+      width: 250px; height: 250px;
+      bottom: 15%; right: 8%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.10) 0%, transparent 70%);
+      animation: float2 18s ease-in-out infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    @keyframes float1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -40px) scale(1.1); }
+      66% { transform: translate(-20px, 20px) scale(0.9); }
+    }
+
+    @keyframes float2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(-25px, 30px) scale(1.05); }
+      66% { transform: translate(35px, -25px) scale(0.95); }
+    }
+
+    /* ===== HEADER / BRANDING ===== */
+    #kc-header {
+      padding-top: 40px;
+    }
+
+    #kc-header-wrapper {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.85);
+      text-shadow:
+        0 0 20px rgba(16, 185, 129, 0.3),
+        0 0 40px rgba(16, 185, 129, 0.1);
+      text-align: center;
+    }
+
+    /* ===== LOGIN CARD ===== */
+    #kc-login {
+      background: rgba(17, 24, 39, 0.85) !important;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(16, 185, 129, 0.15);
+      border-radius: 16px !important;
+      box-shadow:
+        0 4px 30px rgba(0, 0, 0, 0.4),
+        0 0 60px rgba(16, 185, 129, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      padding: 40px !important;
+    }
+
+    .card-pf {
+      background: rgba(17, 24, 39, 0.85) !important;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(16, 185, 129, 0.15) !important;
+      border-radius: 16px !important;
+      box-shadow:
+        0 4px 30px rgba(0, 0, 0, 0.4),
+        0 0 60px rgba(16, 185, 129, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+      margin-top: 0 !important;
+    }
+
+    /* ===== FORM ELEMENTS ===== */
+    #kc-form-login input[type="text"],
+    #kc-form-login input[type="password"],
+    .login-pf-page input[type="text"],
+    .login-pf-page input[type="password"] {
+      background: rgba(255, 255, 255, 0.05) !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      border-radius: 8px !important;
+      color: #e5e7eb !important;
+      padding: 12px 16px !important;
+      font-size: 14px !important;
+      transition: all 0.3s ease !important;
+    }
+
+    #kc-form-login input[type="text"]:focus,
+    #kc-form-login input[type="password"]:focus,
+    .login-pf-page input[type="text"]:focus,
+    .login-pf-page input[type="password"]:focus {
+      border-color: rgba(16, 185, 129, 0.5) !important;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+      outline: none !important;
+    }
+
+    #kc-form-login input::placeholder {
+      color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    /* Labels */
+    .login-pf-page .control-label,
+    #kc-form-login label {
+      color: rgba(255, 255, 255, 0.6) !important;
+      font-weight: 400 !important;
+      font-size: 13px !important;
+      letter-spacing: 0.5px !important;
+      text-transform: uppercase !important;
+    }
+
+    /* ===== LOGIN BUTTON ===== */
+    #kc-login,
+    input[name="login"],
+    .btn-primary,
+    #kc-form-buttons input[type="submit"] {
+      background: linear-gradient(135deg, #10b981, #059669) !important;
+      border: none !important;
+      border-radius: 8px !important;
+      color: white !important;
+      font-weight: 500 !important;
+      letter-spacing: 1px !important;
+      text-transform: uppercase !important;
+      padding: 12px 24px !important;
+      font-size: 14px !important;
+      cursor: pointer !important;
+      transition: all 0.3s ease !important;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+    }
+
+    #kc-login:hover,
+    input[name="login"]:hover,
+    .btn-primary:hover,
+    #kc-form-buttons input[type="submit"]:hover {
+      background: linear-gradient(135deg, #34d399, #10b981) !important;
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* ===== TEXT COLORS ===== */
+    .login-pf-page .instruction,
+    .login-pf-page p,
+    .login-pf-page .pf-c-form__helper-text,
+    #kc-info-message,
+    #kc-form-options a,
+    .login-pf-page a {
+      color: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    .login-pf-page a:hover {
+      color: #10b981 !important;
+    }
+
+    #kc-page-title,
+    .login-pf-page h1 {
+      color: rgba(255, 255, 255, 0.9) !important;
+      font-weight: 300 !important;
+      letter-spacing: 1px !important;
+    }
+
+    /* ===== ALERTS ===== */
+    .alert-error, .pf-m-danger {
+      background: rgba(239, 68, 68, 0.1) !important;
+      border: 1px solid rgba(239, 68, 68, 0.3) !important;
+      border-radius: 8px !important;
+      color: #fca5a5 !important;
+    }
+
+    .alert-success, .pf-m-success {
+      background: rgba(16, 185, 129, 0.1) !important;
+      border: 1px solid rgba(16, 185, 129, 0.3) !important;
+      border-radius: 8px !important;
+      color: #6ee7b7 !important;
+    }
+
+    /* ===== FOOTER ===== */
+    #kc-info,
+    #kc-info-wrapper {
+      color: rgba(255, 255, 255, 0.25) !important;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      #kc-header-wrapper {
+        font-size: 20px;
+        letter-spacing: 4px;
+      }
+      .card-pf, #kc-login {
+        margin: 0 16px !important;
+        padding: 24px !important;
+      }
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0e17; }
+    ::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }

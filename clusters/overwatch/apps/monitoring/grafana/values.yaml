@@ -1,0 +1,555 @@
+# Grafana Helm values for OKD deployment
+# Managed via GitOps - do not modify in UI
+
+admin:
+  existingSecret: grafana-admin-credentials
+  userKey: admin-user
+  passwordKey: admin-password
+
+# Image overrides — pull from Harbor instead of public registries
+image:
+  registry: harbor.${INTERNAL_DOMAIN}
+  repository: sentinel/grafana
+  tag: "12.4.0"
+  pullPolicy: IfNotPresent
+
+# OpenShift-compatible security context
+initChownData:
+  enabled: false
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000780000
+  fsGroup: 1000780000
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000780000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+serviceAccount:
+  create: true
+
+rbac:
+  create: false
+
+persistence:
+  enabled: false
+
+# Sidecar for automatic dashboard discovery from ConfigMaps
+sidecar:
+  image:
+    registry: harbor.${INTERNAL_DOMAIN}
+    repository: sentinel/k8s-sidecar
+    tag: 1.28.0
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000780000
+    allowPrivilegeEscalation: false
+    privileged: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    folder: /var/lib/grafana/dashboards/default
+    folderAnnotation: grafana_folder
+    searchNamespace: monitoring
+    resource: configmap
+    provider:
+      foldersFromFilesStructure: false
+      disableDelete: false
+
+# Datasources - configured via provisioning
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: https://thanos-querier.openshift-monitoring.svc:9091
+        access: proxy
+        isDefault: true
+        jsonData:
+          httpHeaderName1: "Authorization"
+          tlsSkipVerify: true
+          timeInterval: "30s"
+        secureJsonData:
+          httpHeaderValue1: "Bearer $PROMETHEUS_TOKEN"
+      - name: UniFi Prometheus
+        type: prometheus
+        url: http://${IAC_CONTROL_IP}:9099
+        access: proxy
+        isDefault: false
+        jsonData:
+          timeInterval: "30s"
+      - name: Jaeger
+        type: jaeger
+        uid: jaeger-tracing
+        url: http://jaeger-query-http.observability.svc.cluster.local:16686
+        access: proxy
+        isDefault: false
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: ''
+          nodeGraph:
+            enabled: true
+        editable: false
+
+# Environment variables from secrets
+envFromSecrets:
+  - name: grafana-prometheus-token
+    optional: false
+  - name: grafana-keycloak-secret
+    optional: false
+
+# Grafana.ini configuration
+grafana.ini:
+  server:
+    root_url: https://grafana.${INTERNAL_DOMAIN}
+  security:
+    allow_embedding: false
+  auth.anonymous:
+    enabled: false
+  auth:
+    disable_login_form: false
+  auth.generic_oauth:
+    enabled: true
+    name: Keycloak
+    client_id: grafana
+    client_secret: ${GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET}
+    scopes: openid profile email groups
+    auth_url: https://auth.${INTERNAL_DOMAIN}/realms/sentinel/protocol/openid-connect/auth
+    token_url: https://auth.${INTERNAL_DOMAIN}/realms/sentinel/protocol/openid-connect/token
+    api_url: https://auth.${INTERNAL_DOMAIN}/realms/sentinel/protocol/openid-connect/userinfo
+    role_attribute_path: "contains(groups[*], 'admin') && 'Admin' || contains(groups[*], 'operator') && 'Editor' || 'Viewer'"
+    allow_sign_up: true
+    tls_skip_verify_insecure: false
+  users:
+    allow_sign_up: false
+  unified_alerting:
+    enabled: true
+
+# Alert contact points, notification policies, and rules
+alerting:
+  contactpoints.yaml:
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: iac-control-webhook
+        receivers:
+          - uid: iac-webhook-1
+            type: webhook
+            settings:
+              url: "http://${IAC_CONTROL_IP}:9095/grafana"
+              httpMethod: POST
+            disableResolveMessage: false
+
+  notification-policies.yaml:
+    apiVersion: 1
+    policies:
+      - orgId: 1
+        receiver: iac-control-webhook
+        group_by:
+          - grafana_folder
+          - alertname
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+
+  rules.yaml:
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: Sentinel Infrastructure
+        folder: Infrastructure Alerts
+        interval: 60s
+        rules:
+          - uid: high-node-cpu
+            title: High Node CPU Usage
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: PBFA97CFB590B2093
+                model:
+                  expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: B
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params: []
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - B
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: A
+                  reducer: last
+                  refId: B
+                  type: reduce
+              - refId: C
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 85
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: B
+                  refId: C
+                  type: threshold
+            for: 5m
+            annotations:
+              summary: "CPU usage above 85% - check Grafana for details"
+            labels:
+              severity: warning
+
+          - uid: high-node-memory
+            title: High Node Memory Usage
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: PBFA97CFB590B2093
+                model:
+                  expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: B
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params: []
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - B
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: A
+                  reducer: last
+                  refId: B
+                  type: reduce
+              - refId: C
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 90
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: B
+                  refId: C
+                  type: threshold
+            for: 5m
+            annotations:
+              summary: "Memory usage above 90% - check Grafana for details"
+            labels:
+              severity: warning
+
+          - uid: wazuh-critical-cves
+            title: Wazuh Critical CVEs Detected
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: P660CC246A1C19F5F
+                model:
+                  expr: wazuh_vulnerabilities_total{severity="Critical"}
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: B
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params: []
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - B
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: A
+                  reducer: last
+                  refId: B
+                  type: reduce
+              - refId: C
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: B
+                  refId: C
+                  type: threshold
+            for: 5m
+            annotations:
+              summary: "Critical CVEs detected by Wazuh vulnerability scanner"
+              description: "Wazuh has detected critical severity vulnerabilities across monitored hosts. Review the Wazuh Vulnerabilities dashboard for details."
+            labels:
+              severity: critical
+
+          - uid: wazuh-exporter-down
+            title: Wazuh Vulnerability Exporter Down
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: P660CC246A1C19F5F
+                model:
+                  expr: time() - wazuh_vuln_exporter_last_scrape_timestamp
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: B
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params: []
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - B
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: A
+                  reducer: last
+                  refId: B
+                  type: reduce
+              - refId: C
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 900
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: B
+                  refId: C
+                  type: threshold
+            for: 10m
+            annotations:
+              summary: "Wazuh vulnerability exporter has not reported in 15+ minutes"
+            labels:
+              severity: warning
+
+          - uid: pod-crash-loop
+            title: Pod CrashLoopBackOff
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: PBFA97CFB590B2093
+                model:
+                  expr: increase(kube_pod_container_status_restarts_total[1h]) > 3
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+              - refId: B
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params: []
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - B
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: A
+                  reducer: last
+                  refId: B
+                  type: reduce
+              - refId: C
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                  expression: B
+                  refId: C
+                  type: threshold
+            for: 10m
+            annotations:
+              summary: "Pod crash-loop detected - check Grafana for details"
+            labels:
+              severity: critical
+
+# Readiness probe
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: grafana
+  timeoutSeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+# Resource requests and limits
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ExternalSecret for admin credentials (deployed alongside Helm release)
+extraObjects:
+  - apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      name: grafana-admin-credentials
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        kind: ClusterSecretStore
+        name: vault-backend
+      target:
+        name: grafana-admin-credentials
+        creationPolicy: Owner
+      data:
+        - secretKey: admin-user
+          remoteRef:
+            key: grafana
+            property: admin_user
+        - secretKey: admin-password
+          remoteRef:
+            key: grafana
+            property: admin_password

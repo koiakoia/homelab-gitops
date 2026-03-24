@@ -1,0 +1,20 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: ${USERNAME}
+spec:
+  profile:
+    displayName: ${ADMIN_DISPLAY_NAME}
+    email: jim@${DOMAIN}
+  memberOf: [admin, platform-team]
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: admin
+spec:
+  profile:
+    displayName: Sentinel Admin
+    email: admin@${DOMAIN}
+  memberOf: [admin, platform-team]

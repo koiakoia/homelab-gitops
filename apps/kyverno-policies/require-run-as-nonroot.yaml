@@ -1,0 +1,60 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-nonroot
+  annotations:
+    policies.kyverno.io/title: Require Run As Non-Root
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: medium
+    nist-controls: CM-7, AC-6
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-nonroot
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - backstage
+                - demo
+                - harbor
+                - haists-website
+                - homepage
+                - keycloak
+                - matrix
+                - monitoring
+                - netbox
+                - nfs-provisioner
+                - overwatch-console
+                - sentinel-ops
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - pangolin-internal
+          - resources:
+              namespaces:
+                - defectdojo
+              names:
+                - "*valkey*"
+      validate:
+        message: Containers must set runAsNonRoot to true.
+        foreach:
+          - list: "request.object.spec.[initContainers, containers][]"
+            preconditions:
+              all:
+                - key: "{{ element.name }}"
+                  operator: NotIn
+                  value:
+                    - istio-init
+                    - istio-proxy
+                    - istio-validation
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.securityContext.runAsNonRoot || false }}"
+                    operator: NotEquals
+                    value: true

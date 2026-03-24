@@ -1,0 +1,155 @@
+---
+# DefectDojo Helm values for OKD deployment
+# Chart: defectdojo/defectdojo v1.9.12 (app v2.55.4)
+# OKD: anyuid SCC for all SAs
+
+# -- Primary hostname (controls DD_ALLOWED_HOSTS and probe Host headers)
+host: defectdojo.${INTERNAL_DOMAIN}
+
+# -- Full site URL (affects links, JIRA integration, etc.)
+siteUrl: "https://defectdojo.${INTERNAL_DOMAIN}"
+
+# -- Disable chart-managed secrets (using ESO ExternalSecrets)
+createSecret: false
+createValkeySecret: false
+createPostgresqlSecret: false
+
+# -- Disable pre-install hooks for ArgoCD compatibility
+disableHooks: true
+
+# -- Use pre-created ServiceAccount with anyuid SCC
+serviceAccount:
+  create: false
+  name: defectdojo
+
+# -- Global image pull secrets
+imagePullSecrets: harbor-pull-secret
+
+# -- Admin user configuration
+admin:
+  user: ${USERNAME}
+  mail: ${USERNAME}@defectdojo.${INTERNAL_DOMAIN}
+  firstName: Koia
+  lastName: Koia
+
+# -- Django configuration
+django:
+  image:
+    registry: harbor.${INTERNAL_DOMAIN}
+    repository: sentinel/defectdojo-django
+    tag: 2.55.4
+  ingress:
+    enabled: false
+  podSecurityContext:
+    fsGroup: 1001
+  uwsgi:
+    livenessProbe:
+      enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 2000m
+        memory: 1Gi
+
+# -- Nginx configuration
+nginx:
+  image:
+    registry: harbor.${INTERNAL_DOMAIN}
+    repository: sentinel/defectdojo-nginx
+    tag: 2.55.4
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# -- Celery configuration
+celery:
+  image:
+    registry: harbor.${INTERNAL_DOMAIN}
+    repository: sentinel/defectdojo-django
+    tag: 2.55.4
+  beat:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  worker:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 2000m
+        memory: 1Gi
+
+# -- Initializer job configuration
+# keepSeconds: -1 prevents TTL deletion so ArgoCD doesn't see the Job as Missing
+# and recreate it in a loop. Set to 60 (chart default) only during upgrades.
+initializer:
+  image:
+    registry: harbor.${INTERNAL_DOMAIN}
+    repository: sentinel/defectdojo-django
+    tag: 2.55.4
+  staticName: true
+  keepSeconds: -1
+  # Disable Istio sidecar for the initializer Job so it can complete cleanly.
+  # The Istio sidecar keeps running after the main container exits, preventing
+  # the Job pod from reaching Completed status and blocking ArgoCD sync.
+  podAnnotations:
+    sidecar.istio.io/inject: "false"
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 1Gi
+
+# -- PostgreSQL: DISABLED bundled subchart, using raw manifests instead
+postgresql:
+  enabled: false
+
+# -- Valkey (cloudpirates subchart v0.15.3)
+valkey:
+  enabled: true
+  auth:
+    existingSecret: defectdojo-valkey-specific
+    existingSecretPasswordKey: valkey-password
+  podSecurityContext: {}
+  containerSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+
+# -- Keycloak SSO + external database + proxy HTTPS configuration
+extraConfigs:
+  DD_SOCIAL_AUTH_KEYCLOAK_OAUTH2_ENABLED: "true"
+  DD_SOCIAL_AUTH_KEYCLOAK_AUTHORIZATION_URL: "https://auth.${INTERNAL_DOMAIN}/realms/sentinel/protocol/openid-connect/auth"
+  DD_SOCIAL_AUTH_KEYCLOAK_ACCESS_TOKEN_URL: "https://auth.${INTERNAL_DOMAIN}/realms/sentinel/protocol/openid-connect/token"
+  DD_SOCIAL_AUTH_KEYCLOAK_LOGIN_BUTTON_TEXT: "Login with Keycloak"
+  DD_DATABASE_HOST: "defectdojo-postgresql"
+  DD_SOCIAL_AUTH_REDIRECT_IS_HTTPS: "True"
+  DD_SECURE_PROXY_SSL_HEADER: "True"
+
+# -- Enable Istio sidecar injection for mTLS mesh
+# Exclude 5432 (PostgreSQL) from Envoy interception so init containers
+# (db-migration-checker) can reach the database before the sidecar proxy starts.
+# NOTE: 6379 (Valkey) must NOT be excluded — Valkey is meshed and requires mTLS
+# principal identity for the AuthorizationPolicy allow-defectdojo-to-valkey to work.
+# Excluding port 6379 bypasses the proxy, strips mTLS identity, and causes deny-all.
+extraAnnotations:
+  sidecar.istio.io/inject: "true"
+  traffic.sidecar.istio.io/excludeOutboundPorts: "5432"

@@ -1,0 +1,43 @@
+# Default ArgoCD AppProject — bootstrap resource
+# ArgoCD cannot manage its own AppProject (bootstrapping problem).
+# Apply manually after cluster setup or ArgoCD operator install:
+#   oc apply -f apps/argocd/appproject-default.yaml
+#
+# ALSO REQUIRED (one-time): Enable cluster-scoped resource management on the
+# ArgoCD cluster secret. The operator creates the in-cluster secret with a
+# 'namespaces' field (from managed-by labels), which puts ArgoCD in namespaced
+# mode. Without 'clusterResources: true', cluster-scoped resources are rejected.
+#
+#   oc patch secret openshift-gitops-default-cluster-config -n openshift-gitops \
+#     --type merge -p '{"data":{"clusterResources":"'$(echo -n true | base64)'"}}'
+#
+# clusterResourceWhitelist: SCCs (seedbox, reloader, haists-website), ClusterRoles/Bindings
+# (backstage K8s plugin, reloader), ClusterPolicies (Kyverno admission policies),
+# ClusterCleanupPolicies (Kyverno TTL cleanup), StorageClass/PV (static-storage NFS).
+# Keeps blast radius minimal — only explicitly needed cluster-scoped kinds.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: openshift-gitops
+spec:
+  clusterResourceWhitelist:
+    - group: security.openshift.io
+      kind: SecurityContextConstraints
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: kyverno.io
+      kind: ClusterPolicy
+    - group: kyverno.io
+      kind: ClusterCleanupPolicy
+    - group: storage.k8s.io
+      kind: StorageClass
+    - group: ""
+      kind: PersistentVolume
+  destinations:
+    - namespace: '*'
+      server: '*'
+  sourceRepos:
+    - '*'

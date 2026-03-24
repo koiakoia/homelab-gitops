@@ -1,0 +1,29 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backstage
+  namespace: openshift-gitops
+spec:
+  project: default
+  sources:
+    - repoURL: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/overwatch-gitops.git
+      targetRevision: main
+      path: apps/backstage
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backstage
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[]?.remoteRef
+        - .spec.target
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

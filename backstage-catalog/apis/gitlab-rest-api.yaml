@@ -1,0 +1,38 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: gitlab-rest-api
+  description: GitLab REST API v4 for repository, CI/CD, and project management
+  links:
+    - url: https://gitlab.${DOMAIN}
+      title: GitLab
+      icon: dashboard
+  tags:
+    - ci-cd
+    - source-control
+    - gitlab
+    - overwatch
+spec:
+  type: openapi
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: GitLab REST API
+      version: "v4"
+      description: GitLab API at ${GITLAB_IP} - 6 project repos in ${GITLAB_USER} namespace
+    servers:
+      - url: http://${GITLAB_IP}/api/v4
+    paths:
+      /projects:
+        get:
+          summary: List all projects
+      /projects/{id}/repository/branches:
+        get:
+          summary: List repository branches
+      /projects/{id}/pipelines:
+        get:
+          summary: List project pipelines

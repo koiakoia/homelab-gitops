@@ -1,0 +1,22 @@
+# Trivy ignore rules for overwatch-gitops K8s manifests
+# These findings are acknowledged but cannot be safely remediated
+# Format: one rule ID per line (comments above for context)
+
+# Seedbox (sonarr/radarr/prowlarr): LinuxServer.io s6-overlay requires
+# SETGID, SETUID, CHOWN, FOWNER, DAC_OVERRIDE capabilities for init.
+# Runs as root during init, drops to PUID/PGID 1000 for app processes.
+# DO NOT apply "drop: ALL" or "allowPrivilegeEscalation: false" — this
+# breaks s6-overlay init and causes a crash loop. Custom SCC
+# "linuxserver-io" grants minimum required capabilities.
+# Risk accepted: least-privilege caps, app runs as UID 1000 after init.
+KSV012
+KSV014
+KSV106
+
+# Newt tunnel: requires root + privilege escalation for WireGuard
+# tun device, network namespace ops, UDP binding. Writable rootfs
+# needed for /tmp/healthy health check.
+# Risk accepted: single-purpose container, network policy restricted.
+KSV012
+KSV014
+KSV106

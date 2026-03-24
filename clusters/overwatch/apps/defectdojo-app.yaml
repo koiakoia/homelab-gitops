@@ -1,0 +1,65 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: defectdojo
+  namespace: openshift-gitops
+spec:
+  project: default
+  sources:
+    - repoURL: https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
+      chart: defectdojo
+      targetRevision: 1.9.12
+      helm:
+        valueFiles:
+          - $values/clusters/overwatch/apps/defectdojo/values.yaml
+        parameters:
+          - name: "django.image.registry"
+            value: "harbor.${INTERNAL_DOMAIN}"
+          - name: "django.image.repository"
+            value: "sentinel/defectdojo-django"
+          - name: "nginx.image.registry"
+            value: "harbor.${INTERNAL_DOMAIN}"
+          - name: "nginx.image.repository"
+            value: "sentinel/defectdojo-nginx"
+          - name: "celery.image.registry"
+            value: "harbor.${INTERNAL_DOMAIN}"
+          - name: "celery.image.repository"
+            value: "sentinel/defectdojo-django"
+          - name: "initializer.image.registry"
+            value: "harbor.${INTERNAL_DOMAIN}"
+          - name: "initializer.image.repository"
+            value: "sentinel/defectdojo-django"
+    - repoURL: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/overwatch-gitops.git
+      targetRevision: main
+      ref: values
+    - repoURL: http://${GITLAB_IP}/${GITLAB_NAMESPACE}/overwatch-gitops.git
+      targetRevision: main
+      path: apps/defectdojo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: defectdojo
+  ignoreDifferences:
+    - kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec/volumeName
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.data[]?.remoteRef
+        - .spec.target
+    - group: apps
+      kind: StatefulSet
+      jqPathExpressions:
+        - .spec.volumeClaimTemplates
+        - .spec.persistentVolumeClaimRetentionPolicy
+        - .spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"]
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+      - Replace=true

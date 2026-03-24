@@ -1,0 +1,50 @@
+---
+# All external services route through Pangolin/Traefik (${PROXY_IP}:443)
+# which is allowed by iac-control's FORWARD chain on port 443.
+# Hostname-based TLS routing lets Envoy pass through the correct SNI.
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: pangolin-services
+  namespace: overwatch-console
+spec:
+  hosts:
+    - pve.${INTERNAL_DOMAIN}
+    - pve2.${INTERNAL_DOMAIN}
+    - proxmox-node-3.${INTERNAL_DOMAIN}
+    - wazuh-api.${INTERNAL_DOMAIN}
+    - vault.${INTERNAL_DOMAIN}
+    - argocd.${INTERNAL_DOMAIN}
+    - auth.${INTERNAL_DOMAIN}
+    - crowdsec-api.${INTERNAL_DOMAIN}
+    - wazuh-indexer.${INTERNAL_DOMAIN}
+  addresses:
+    - ${PROXY_IP}
+  ports:
+    - number: 443
+      name: tls
+      protocol: TLS
+  location: MESH_EXTERNAL
+  resolution: STATIC
+  endpoints:
+    - address: ${PROXY_IP}
+---
+# GitLab (HTTP :80) — direct access, allowed by FORWARD chain port 80 rule
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: gitlab
+  namespace: overwatch-console
+spec:
+  hosts:
+    - gitlab.internal
+  addresses:
+    - ${GITLAB_IP}
+  ports:
+    - number: 80
+      name: http
+      protocol: HTTP
+  location: MESH_EXTERNAL
+  resolution: STATIC
+  endpoints:
+    - address: ${GITLAB_IP}

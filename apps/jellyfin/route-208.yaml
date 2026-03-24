@@ -1,0 +1,15 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: jellyfin-208
+  namespace: media
+spec:
+  host: jellyfin.${INTERNAL_DOMAIN}
+  to:
+    kind: Service
+    name: jellyfin
+  port:
+    targetPort: 8096
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

@@ -1,0 +1,88 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: sentinel-ops
+  labels:
+    security.sentinel/layer: network-policy
+    security.sentinel/type: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cronjobs
+  namespace: sentinel-ops
+  labels:
+    security.sentinel/layer: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+        - port: 5353
+          protocol: UDP
+        - port: 5353
+          protocol: TCP
+    # Vault API
+    - to:
+        - ipBlock:
+            cidr: ${VAULT_IP}/32
+      ports:
+        - port: 8200
+          protocol: TCP
+    # Grafana via Traefik
+    - to:
+        - ipBlock:
+            cidr: ${PROXY_IP}/32
+      ports:
+        - port: 443
+          protocol: TCP
+    # MinIO
+    - to:
+        - ipBlock:
+            cidr: ${MINIO_PRIMARY_IP}/32
+      ports:
+        - port: 9000
+          protocol: TCP
+    # MinIO replica
+    - to:
+        - ipBlock:
+            cidr: ${MINIO_REPLICA_IP}/32
+      ports:
+        - port: 9000
+          protocol: TCP
+    # GitLab API
+    - to:
+        - ipBlock:
+            cidr: ${GITLAB_IP}/32
+      ports:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+    # Wazuh API
+    - to:
+        - ipBlock:
+            cidr: ${WAZUH_IP}/32
+      ports:
+        - port: 55000
+          protocol: TCP
+    # Kubernetes API (for ESO, SA token auth)
+    - to:
+        - ipBlock:
+            cidr: ${OKD_NETWORK}/24
+      ports:
+        - port: 6443
+          protocol: TCP

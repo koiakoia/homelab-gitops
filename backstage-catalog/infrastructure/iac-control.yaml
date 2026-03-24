@@ -1,0 +1,27 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: iac-control
+  description: IaC orchestration VM - HAProxy LB, dnsmasq, keepalived, Ansible/Terraform runner
+  annotations:
+    gitlab.com/project-slug: ${GITLAB_NAMESPACE}/sentinel-iac
+    grafana/dashboard-url: https://grafana.${INTERNAL_DOMAIN}
+  links:
+    - url: http://${IAC_CONTROL_IP}:8405/stats
+      title: HAProxy Stats
+      icon: dashboard
+  tags:
+    - iac
+    - orchestration
+    - haproxy
+    - dns
+    - infrastructure
+    - overwatch
+spec:
+  type: vm
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  dependsOn:
+    - resource:proxmox-pve

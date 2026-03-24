@@ -1,0 +1,27 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: jellyfin
+  description: Media server for streaming video content
+  annotations:
+    backstage.io/kubernetes-label-selector: app=jellyfin
+    backstage.io/kubernetes-namespace: media
+    argocd/app-name: jellyfin
+    gitlab.com/project-slug: ${GITLAB_NAMESPACE}/overwatch-gitops
+  links:
+    - url: https://jellyfin.${INTERNAL_DOMAIN}
+      title: Jellyfin Media Server
+      icon: dashboard
+  tags:
+    - media
+    - application
+    - overwatch
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform
+  dependsOn:
+    - component:nfs-provisioner
+    - component:istio-controlplane

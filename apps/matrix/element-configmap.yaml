@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: element-config
+  namespace: matrix
+data:
+  nginx.conf: |
+    server {
+      listen 8080;
+      server_name matrix.${INTERNAL_DOMAIN};
+      return 301 https://matrix.${DOMAIN}$request_uri;
+    }
+
+    server {
+      listen 8080;
+      server_name matrix.${DOMAIN} _;
+      root /app;
+      index index.html;
+      location / {
+        try_files $uri $uri/ /index.html;
+      }
+    }
+  config.json: |
+    {
+      "default_server_config": {
+        "m.homeserver": {
+          "base_url": "https://matrix.${DOMAIN}",
+          "server_name": "matrix.${DOMAIN}"
+        }
+      },
+      "disable_guests": true,
+      "integrations_ui_url": "",
+      "integrations_rest_url": "",
+      "integrations_widgets_urls": []
+    }

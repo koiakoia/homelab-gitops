@@ -1,0 +1,224 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ops-scripts
+  namespace: sentinel-ops
+data:
+  grafana-health.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    GRAFANA_URL="https://grafana.${INTERNAL_DOMAIN}"
+    HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" "${GRAFANA_URL}/api/health")
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) Grafana healthy"
+    else
+        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) Grafana unhealthy: HTTP ${HTTP_CODE}" >&2
+        exit 1
+    fi
+  minio-replicate.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    MINIO_PRIMARY="${MINIO_ENDPOINT:-http://${MINIO_PRIMARY_IP}:9000}"
+    MINIO_REPLICA="http://${MINIO_REPLICA_IP}:9000"
+    MINIO_AK="${MINIO_ACCESS_KEY:-}"
+    MINIO_SK="${MINIO_SECRET_KEY:-}"
+
+    log() { echo "[$(date -u +%H:%M:%S)] $*"; }
+
+    # OKD runs containers as non-root; mc needs a writable config dir
+    export MC_CONFIG_DIR=/tmp/.mc
+
+    log "Configuring mc aliases..."
+    mc alias set primary "${MINIO_PRIMARY}" "${MINIO_AK}" "${MINIO_SK}" --api s3v4 2>&1 || { log "FATAL: Cannot configure primary MinIO alias"; exit 1; }
+    mc alias set replica "${MINIO_REPLICA}" "${MINIO_AK}" "${MINIO_SK}" --api s3v4 2>&1 || { log "FATAL: Cannot configure replica MinIO alias"; exit 1; }
+
+    # Verify actual connectivity before attempting replication
+    log "Testing primary MinIO connectivity..."
+    if ! mc ls primary/ --connect-timeout 10 >/dev/null 2>&1; then
+        log "FATAL: Cannot reach primary MinIO at ${MINIO_PRIMARY}"
+        exit 1
+    fi
+    log "Primary MinIO reachable"
+
+    log "Testing replica MinIO connectivity..."
+    if ! mc ls replica/ --connect-timeout 10 >/dev/null 2>&1; then
+        log "FATAL: Cannot reach replica MinIO at ${MINIO_REPLICA}"
+        exit 1
+    fi
+    log "Replica MinIO reachable"
+
+    BUCKETS="vault-backups gitlab-backups etcd-backups terraform-state"
+    FAILURES=0
+
+    for bucket in $BUCKETS; do
+        log "Replicating ${bucket}..."
+        if mc mirror --overwrite "primary/${bucket}" "replica/${bucket}" 2>&1; then
+            log "${bucket}: OK"
+        else
+            log "${bucket}: FAILED"
+            FAILURES=$((FAILURES + 1))
+        fi
+    done
+
+    if [ "$FAILURES" -gt 0 ]; then
+        log "Replication completed with ${FAILURES} failures"
+        exit 1
+    fi
+    log "All buckets replicated successfully"
+  evidence-pipeline.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    GITLAB_API="${GITLAB_URL:-http://${GITLAB_IP}}/api/v4"
+    GITLAB_PAT="${GITLAB_TOKEN:-}"
+    COMPLIANCE_PROJECT_ID=5
+    DATE=$(date +%Y-%m-%d)
+    TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    MINIO_AK="${MINIO_ACCESS_KEY:-}"
+    MINIO_SK="${MINIO_SECRET_KEY:-}"
+    MINIO_EP="${MINIO_ENDPOINT:-http://${MINIO_PRIMARY_IP}:9000}"
+
+    log() { echo "[$(date -u +%H:%M:%S)] $*"; }
+
+    export MC_CONFIG_DIR=/tmp/.mc
+
+    if [ -z "$GITLAB_PAT" ]; then
+        log "ERROR: GITLAB_TOKEN not set"
+        exit 1
+    fi
+
+    # Fetch latest compliance report from MinIO
+    mc alias set sentinel "${MINIO_EP}" "${MINIO_AK}" "${MINIO_SK}" --api s3v4 >/dev/null 2>&1 || true
+    REPORT_FILE="/tmp/nist-compliance-${DATE}.json"
+    mc cp "sentinel/compliance-reports/nist-compliance-${DATE}.json" "${REPORT_FILE}" 2>/dev/null || {
+        log "No compliance report found for ${DATE}, trying yesterday"
+        YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
+        mc cp "sentinel/compliance-reports/nist-compliance-${YESTERDAY}.json" "${REPORT_FILE}" 2>/dev/null || {
+            log "No recent compliance report found, skipping evidence commit"
+            exit 0
+        }
+    }
+
+    # Base64 encode content for GitLab API
+    CONTENT=$(base64 -w0 < "${REPORT_FILE}")
+
+    # Check if file already exists in repo
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+        -H "PRIVATE-TOKEN: ${GITLAB_PAT}" \
+        "${GITLAB_API}/projects/${COMPLIANCE_PROJECT_ID}/repository/files/evidence%2Fcompliance-check-${DATE}.json?ref=main")
+
+    if [ "$HTTP_CODE" = "200" ]; then
+        # Update existing file
+        curl -s -X PUT \
+            -H "PRIVATE-TOKEN: ${GITLAB_PAT}" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\":\"main\",\"content\":\"$(cat "${REPORT_FILE}")\",\"commit_message\":\"evidence: update compliance report ${DATE}\",\"encoding\":\"text\"}" \
+            "${GITLAB_API}/projects/${COMPLIANCE_PROJECT_ID}/repository/files/evidence%2Fcompliance-check-${DATE}.json" >/dev/null
+        log "Updated evidence/compliance-check-${DATE}.json"
+    else
+        # Create new file
+        curl -s -X POST \
+            -H "PRIVATE-TOKEN: ${GITLAB_PAT}" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\":\"main\",\"content\":\"$(cat "${REPORT_FILE}")\",\"commit_message\":\"evidence: add compliance report ${DATE}\",\"encoding\":\"text\"}" \
+            "${GITLAB_API}/projects/${COMPLIANCE_PROJECT_ID}/repository/files/evidence%2Fcompliance-check-${DATE}.json" >/dev/null
+        log "Created evidence/compliance-check-${DATE}.json"
+    fi
+
+    rm -f "${REPORT_FILE}"
+    log "Evidence pipeline complete"
+  gitlab-pat-rotate.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    # Rotate GitLab PAT via self-rotate API and update Vault
+    GITLAB_API="${GITLAB_URL:-http://${GITLAB_IP}}/api/v4"
+    CURRENT_PAT="${GITLAB_TOKEN:-}"
+    VAULT_ADDR="https://vault.${INTERNAL_DOMAIN}"
+
+    log() { echo "[$(date -u +%H:%M:%S)] $*"; }
+
+    if [ -z "$CURRENT_PAT" ]; then
+        log "ERROR: GITLAB_TOKEN not set"
+        exit 1
+    fi
+
+    # Verify current PAT works
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+        -H "PRIVATE-TOKEN: ${CURRENT_PAT}" "${GITLAB_API}/personal_access_tokens/self")
+    if [ "$HTTP_CODE" != "200" ]; then
+        log "ERROR: Current PAT invalid (HTTP ${HTTP_CODE})"
+        exit 1
+    fi
+
+    # Get current PAT info
+    PAT_INFO=$(curl -s -H "PRIVATE-TOKEN: ${CURRENT_PAT}" "${GITLAB_API}/personal_access_tokens/self")
+    PAT_NAME=$(echo "$PAT_INFO" | python3 -c "import json,sys; print(json.load(sys.stdin)['name'])")
+    PAT_EXPIRES=$(echo "$PAT_INFO" | python3 -c "import json,sys; print(json.load(sys.stdin).get('expires_at','unknown'))")
+    log "Current PAT: name=${PAT_NAME} expires=${PAT_EXPIRES}"
+
+    # Rotate the PAT (GitLab returns a new token, old one is revoked)
+    ROTATE_RESP=$(curl -s -w "\n%{http_code}" \
+        -X POST \
+        -H "PRIVATE-TOKEN: ${CURRENT_PAT}" \
+        -H "Content-Type: application/json" \
+        -d "{\"expires_at\":\"$(date -d '+30 days' +%Y-%m-%d)\"}" \
+        "${GITLAB_API}/personal_access_tokens/self/rotate")
+    ROTATE_CODE=$(echo "$ROTATE_RESP" | tail -1)
+    ROTATE_BODY=$(echo "$ROTATE_RESP" | head -n -1)
+
+    if [ "$ROTATE_CODE" != "200" ]; then
+        log "ERROR: Rotation failed (HTTP ${ROTATE_CODE}): ${ROTATE_BODY}"
+        exit 1
+    fi
+
+    NEW_PAT=$(echo "$ROTATE_BODY" | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])")
+    NEW_EXPIRES=$(echo "$ROTATE_BODY" | python3 -c "import json,sys; print(json.load(sys.stdin).get('expires_at','unknown'))")
+    log "New PAT obtained: expires=${NEW_EXPIRES} (${#NEW_PAT} chars)"
+
+    # Verify new PAT works
+    VERIFY_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+        -H "PRIVATE-TOKEN: ${NEW_PAT}" "${GITLAB_API}/personal_access_tokens/self")
+    if [ "$VERIFY_CODE" != "200" ]; then
+        log "ERROR: New PAT verification failed (HTTP ${VERIFY_CODE})"
+        exit 1
+    fi
+    log "New PAT verified OK"
+
+    # Authenticate to Vault via K8s auth
+    SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    VAULT_TOKEN=$(curl -sk -X POST \
+        -d "{\"role\":\"sentinel-ops\",\"jwt\":\"${SA_TOKEN}\"}" \
+        "${VAULT_ADDR}/v1/auth/kubernetes/login" | \
+        python3 -c "import json,sys; print(json.load(sys.stdin)['auth']['client_token'])")
+
+    if [ -z "$VAULT_TOKEN" ]; then
+        log "ERROR: Vault K8s auth failed"
+        exit 1
+    fi
+    log "Vault K8s auth OK"
+
+    # Read existing secret to preserve other fields
+    EXISTING=$(curl -sk -H "X-Vault-Token: ${VAULT_TOKEN}" \
+        "${VAULT_ADDR}/v1/secret/data/gitlab" | \
+        python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['data']['data']))")
+
+    # Update PAT and note in existing data
+    ROTATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    UPDATED=$(echo "$EXISTING" | python3 -c "import json,sys; d=json.load(sys.stdin); d['pat']='${NEW_PAT}'; d['note']='auto-rotated ${ROTATED_AT} by sentinel-ops CronJob. Expires ${NEW_EXPIRES}.'; print(json.dumps(d))")
+
+    # Write updated secret to Vault
+    WRITE_CODE=$(curl -sk -o /dev/null -w "%{http_code}" \
+        -X POST \
+        -H "X-Vault-Token: ${VAULT_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "{\"data\":${UPDATED}}" \
+        "${VAULT_ADDR}/v1/secret/data/gitlab")
+
+    if [ "$WRITE_CODE" != "200" ]; then
+        log "ERROR: Vault write failed (HTTP ${WRITE_CODE}). NEW PAT IS ACTIVE but not stored!"
+        log "MANUAL ACTION REQUIRED: Store new PAT in Vault secret/gitlab"
+        exit 1
+    fi
+    log "New PAT stored in Vault secret/gitlab"
+
+    # ESO will sync to ArgoCD repo secret within refreshInterval (1h)
+    log "Rotation complete. ESO will sync to ArgoCD within 1 hour."

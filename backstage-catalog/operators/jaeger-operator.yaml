@@ -1,0 +1,21 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: jaeger-operator
+  description: Jaeger Operator managing distributed tracing instances in the cluster
+  annotations:
+    backstage.io/kubernetes-label-selector: name=jaeger-operator
+    backstage.io/kubernetes-namespace: observability
+    argocd/app-name: jaeger
+    gitlab.com/project-slug: ${GITLAB_NAMESPACE}/overwatch-gitops
+  tags:
+    - operator
+    - tracing
+    - observability
+    - overwatch
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: sentinel-platform

@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-config
+  namespace: falco-system
+  labels:
+    app.kubernetes.io/name: falco
+data:
+  falco.yaml: |
+    rules_files:
+      - /etc/falco/falco_rules.yaml
+      - /etc/falco/falco_rules.local.yaml
+      - /etc/falco/rules.d
+
+    plugins:
+      - name: k8saudit
+        library_path: libk8saudit.so
+        open_params: "http://:9765/k8s-audit"
+      - name: json
+        library_path: libjson.so
+
+    load_plugins: []
+
+    engine:
+      kind: modern_ebpf
+      modern_ebpf:
+        cpus_for_each_buffer: 2
+
+    container_engines:
+      cri:
+        sockets:
+          - /run/crio/crio.sock
+
+    time_format_iso_8601: true
+    json_output: true
+    json_include_output_property: true
+    json_include_tags_property: true
+
+    log_stderr: true
+    log_syslog: false
+    log_level: info
+
+    priority: notice
+
+    buffered_outputs: false
+    outputs_queue:
+      capacity: 0
+
+    stdout_output:
+      enabled: true
+
+    http_output:
+      enabled: false
+
+    metrics:
+      enabled: true
+      interval: 15m
+      output_rule: true
+      resource_utilization_enabled: true
+      kernel_event_counters_enabled: true
+      libbpf_stats_enabled: true
+      convert_memory_to_mb: true
+
+    webserver:
+      enabled: true
+      listen_port: 8765
+      k8s_healthz_endpoint: /healthz
+
+    syscall_event_drops:
+      threshold: 0.1
+      actions:
+        - log
+        - alert
+      rate: 0.03333
+      max_burst: 1
+
+    grpc:
+      enabled: false
+
+    grpc_output:
+      enabled: false
+
+  falco_rules.local.yaml: |
+    # OKD-tuned custom rules — suppress noise from platform components
+
+    # Suppress noisy default rules for OKD platform operations
+    - rule: Contact K8S API Server From Container
+      enabled: false
+      override:
+        enabled: replace
+
+    - rule: Read sensitive file untrusted
+      enabled: false
+      override:
+        enabled: replace
+
+    # Alert on all shell spawns in containers (tune exclusions later)
+    - rule: Shell Spawned in Application Container
+      desc: Detect shell spawns in containers
+      condition: >
+        spawned_process and container and
+        proc.name in (bash, sh, dash, ash, zsh, csh, ksh) and
+        proc.tty != 0
+      output: >
+        Shell spawned in container
+        (user=%user.name shell=%proc.name parent=%proc.pname
+         cmdline=%proc.cmdline container_id=%container.id)
+      priority: WARNING
+      tags: [container, shell, mitre_execution]
+
+    # Detect sensitive file access
+    - rule: Read Sensitive File in Container
+      desc: Detect reads of sensitive files like /etc/shadow inside containers
+      condition: >
+        open_read and container and
+        fd.name in (/etc/shadow, /etc/gshadow, /etc/sudoers) and
+        not proc.name in (groupadd, useradd, adduser, pg_isready)
+      output: >
+        Sensitive file read in container
+        (user=%user.name file=%fd.name proc=%proc.name
+         cmdline=%proc.cmdline container_id=%container.id)
+      priority: WARNING
+      tags: [container, filesystem, mitre_credential_access]
